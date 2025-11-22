@@ -1,7 +1,11 @@
 import os
+import hashlib
 from cryptography.fernet import Fernet
 
 KEY_FILE = "secret.key"
+
+# Cache the key in memory so we can reuse it
+_CURRENT_KEY: bytes | None = None
 
 
 def _create_key_file(path: str) -> bytes:
@@ -23,14 +27,16 @@ def _load_key_file(path: str) -> bytes:
         return f.read()
 
 
-def load_cipher() -> Fernet:
+def _load_or_create_key() -> bytes:
     """
-    Load an existing symmetric key from KEY_FILE if it exists.
-    Otherwise, generate a new key and save it.
+    Load the symmetric key from KEY_FILE if it exists,
+    otherwise create a new one. Cache it in _CURRENT_KEY.
+    """
+    global _CURRENT_KEY
 
-    Returns a Fernet cipher object that can be used
-    for encryption and decryption.
-    """
+    if _CURRENT_KEY is not None:
+        return _CURRENT_KEY
+
     if os.path.exists(KEY_FILE):
         key = _load_key_file(KEY_FILE)
         print("[+] Loaded existing encryption key.")
@@ -38,7 +44,30 @@ def load_cipher() -> Fernet:
         key = _create_key_file(KEY_FILE)
         print("[+] Created new encryption key and saved to secret.key.")
 
+    _CURRENT_KEY = key
+    return key
+
+
+def load_cipher() -> Fernet:
+    """
+    Return a Fernet cipher object bound to our symmetric key.
+    """
+    key = _load_or_create_key()
     return Fernet(key)
+
+
+def get_key_fingerprint() -> str:
+    """
+    Return a short fingerprint of the current symmetric key.
+
+    This is similar to how apps show a 'safety code' so users can
+    verify they are using the same encryption key.
+
+    We hash the key with SHA-256 and return the first 16 hex chars.
+    """
+    key = _load_or_create_key()
+    h = hashlib.sha256(key).hexdigest()
+    return h[:16]
 
 
 def encrypt_message(cipher: Fernet, text: str) -> bytes:

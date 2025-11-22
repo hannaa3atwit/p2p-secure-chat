@@ -6,7 +6,7 @@ import queue
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
-from crypto import load_cipher, encrypt_message, decrypt_message
+from crypto import load_cipher, encrypt_message, decrypt_message, get_key_fingerprint
 
 
 def recv_exact(conn: socket.socket, size: int) -> bytes:
@@ -31,16 +31,92 @@ class ChatServerGUI:
         self.server_sock: socket.socket | None = None
         self.client_sock: socket.socket | None = None
         self.cipher = load_cipher()
+        self.fingerprint = get_key_fingerprint()
         self.incoming = queue.Queue()
         self.running = True
 
-        self.root.title(f"P2P Secure Chat - Server ({host}:{port})")
+        self.root.title("P2P Secure Chat - Server (Intro)")
 
-        # UI layout
-        self.text_area = ScrolledText(root, wrap=tk.WORD, state="disabled", height=20, width=60)
+        # Frames for intro and chat
+        self.intro_frame = tk.Frame(root)
+        self.chat_frame: tk.Frame | None = None
+
+        self.build_intro_ui()
+
+    # ---------- Intro screen ----------
+
+    def build_intro_ui(self) -> None:
+        self.intro_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        title = tk.Label(
+            self.intro_frame,
+            text="P2P Secure Chat - Server",
+            font=("Segoe UI", 16, "bold"),
+        )
+        title.pack(pady=(0, 10))
+
+        desc = (
+            "This chat uses end-to-end encryption with a shared secret key.\n\n"
+            "• Messages are encrypted using the Fernet algorithm (AES + HMAC).\n"
+            "• Only peers with the same secret key can read the messages.\n"
+            "• The short key fingerprint below lets you verify that both sides\n"
+            "  are using the same encryption key.\n\n"
+            "If the fingerprint shown here matches the client's fingerprint,\n"
+            "your encryption setup matches."
+        )
+
+        label = tk.Label(
+            self.intro_frame,
+            text=desc,
+            justify=tk.LEFT,
+            anchor="w",
+            font=("Segoe UI", 10),
+        )
+        label.pack(pady=(0, 10), anchor="w")
+
+        fp_label = tk.Label(
+            self.intro_frame,
+            text=f"Key fingerprint: {self.fingerprint}",
+            font=("Consolas", 11, "bold"),
+            fg="blue",
+        )
+        fp_label.pack(pady=(5, 15), anchor="w")
+
+        start_btn = tk.Button(
+            self.intro_frame,
+            text="Start Encrypted Chat",
+            font=("Segoe UI", 11, "bold"),
+            command=self.start_chat,
+        )
+        start_btn.pack(pady=(5, 0))
+
+    def start_chat(self) -> None:
+        """Switch from intro page to the main chat UI and start the server thread."""
+        self.intro_frame.destroy()
+        self.build_chat_ui()
+
+        # Start background network thread
+        threading.Thread(target=self.network_worker, daemon=True).start()
+
+        # Periodically check for incoming messages
+        self.root.after(100, self.poll_incoming)
+
+        self.append_text("[System] Starting server...\n")
+        self.append_text(f"[System] Key fingerprint: {self.fingerprint}\n")
+
+    # ---------- Chat screen ----------
+
+    def build_chat_ui(self) -> None:
+        self.root.title(f"P2P Secure Chat - Server ({self.host}:{self.port})")
+        self.chat_frame = tk.Frame(self.root)
+        self.chat_frame.pack(fill=tk.BOTH, expand=True)
+
+        self.text_area = ScrolledText(
+            self.chat_frame, wrap=tk.WORD, state="disabled", height=20, width=60
+        )
         self.text_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-        bottom_frame = tk.Frame(root)
+        bottom_frame = tk.Frame(self.chat_frame)
         bottom_frame.pack(padx=10, pady=(0, 10), fill=tk.X)
 
         self.entry = tk.Entry(bottom_frame)
@@ -53,15 +129,9 @@ class ChatServerGUI:
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # Start background network thread
-        threading.Thread(target=self.network_worker, daemon=True).start()
-
-        # Periodically check for incoming messages
-        self.root.after(100, self.poll_incoming)
-
-        self.append_text("[System] Starting server...\n")
-
     def append_text(self, text: str) -> None:
+        if not hasattr(self, "text_area"):
+            return
         self.text_area.config(state="normal")
         self.text_area.insert(tk.END, text)
         self.text_area.see(tk.END)
