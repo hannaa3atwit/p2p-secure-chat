@@ -33,23 +33,6 @@ A SHA-256 fingerprint of the key is displayed so users can verify that both peer
 
 ---
 
-## Project Structure
-
-/p2p-secure-chat
-/src
-gui_client.py
-gui_server.py
-crypto.py
-client.py (legacy terminal client)
-server.py (legacy terminal server)
-secret.key
-README.md
-
-yaml
-Copy code
-
----
-
 ## Running the Project
 
 ### Setup
