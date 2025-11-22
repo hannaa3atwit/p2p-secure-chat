@@ -33,60 +33,21 @@ A SHA-256 fingerprint of the key is displayed so users can verify that both peer
 
 ---
 
-## Running the Project
+# Set Up
 
-### Setup
-```sh
+Install dependencies and activate the virtual environment:
+
 cd p2p-secure-chat
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install cryptography requests
-Run Server
-sh
-Copy code
+
+# Running The Project
+
+Run Server (Terminal 1)
 cd src
 py gui_server.py 5000
-Run Client
-sh
-Copy code
+
+Run Client (Terminal 2)
 cd src
 py gui_client.py <server_ip> 5000
-GUI Features
-Intro Screen
-Explains how encryption works
-
-Displays the key fingerprint
-
-User clicks "Join Encrypted Chat" to continue
-
-Chat Window
-Allows sending and receiving encrypted messages
-
-Messages are decrypted and displayed in real time
-
-Crypto Price Window
-Opened using the "$" button.
-
-Features:
-
-Current BTC, ETH, SOL, and DOGE prices
-
-24-hour change percentages (green/red)
-
-Manual refresh
-
-Optional auto-refresh every 30 seconds
-
-Networking and Security Concepts Demonstrated
-TCP sockets and message framing
-
-Background threads for receiving data
-
-Application-layer encryption on top of TCP
-
-Key verification using fingerprints
-
-External API integration
-
-GUI event-driven programming
-
